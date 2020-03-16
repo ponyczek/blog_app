@@ -1,9 +1,13 @@
 class ArticlesController < ApplicationController
-  before_action :set_article, only: [:show, :edit, :update, :destroy]
+  before_action :set_article, only: [:show, :edit, :update, :destroy, :toggle_draft]
   before_action :authenticate_user!, only: [:new, :edit, :update, :destroy, :create]
 
   def index
-    @articles = Article.all.order(created_at: :desc)
+    if current_user.try(:admin?)
+      @articles = Article.all.order(created_at: :desc)
+    else
+      @articles = Article.where(draft:false).order(created_at: :desc)
+    end
   end
 
   def show
@@ -22,7 +26,6 @@ class ArticlesController < ApplicationController
     respond_to do |format|
       if @article.save
         format.html { redirect_to @article, notice: 'Article was successfully created.' }
-        # format.json { render :show, status: :created, location: @article }
       else
         format.html { render :new }
         # format.json { render json: @article.errors, status: :unprocessable_entity }
@@ -50,12 +53,17 @@ class ArticlesController < ApplicationController
     end
   end
 
+  def toggle_draft
+    @article.toggle(:draft).save
+    redirect_to articles_url,  notice: 'Article was successfully updated.'
+  end
+
   private
     def set_article
       @article = Article.find(params[:id])
     end
 
     def article_params
-      params.require(:article).permit(:title, :body)
+      params.require(:article).permit(:title, :body, :draft)
     end
 end
